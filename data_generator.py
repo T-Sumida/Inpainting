@@ -15,7 +15,7 @@ class DataGenerator():
         self.width = width
         self.height = height
         image_num = batch_size
-        # self.load_image(mat_path, load_image_num)
+        self.load_image(mat_path, load_image_num)
 
         train_datagen = ImageDataGenerator(
             rescale=1./255,
@@ -131,5 +131,5 @@ class DataGenerator():
         return mask
 
 
-t = DataGenerator("./SUN_urls.mat", 140, 140, 12, 5)
-t.get_data()
+t = DataGenerator("./url.mat", 140, 140, 12, 20000)
+# t.get_data()
