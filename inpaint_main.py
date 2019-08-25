@@ -1,12 +1,16 @@
 # coding:utf-8
 import tensorflow as tf
 import inpaint_module
+import cv2
+from data_generator import DataGenerator
 
 WIDTH = 256
 HEIGHT = 256
-BATCH_SIZE = 32
+BATCH_SIZE = 4
 EPOCHS = 1000000
-mask_size = [128, 64, 96]
+BATCH_MAX = 2
+SAVE_COUNTER = 2
+SAVE_DIR = "./tmp/"
 
 
 def main():
@@ -31,10 +35,7 @@ def main():
         input_red_image, 'red', reuse=True)
 
     # ロスの定義
-    loss_d_red = tf.reduce_mean(
-        -tf.reduce_sum(tf.log(d_real_red) +
-                       tf.log(tf.ones(BATCH_SIZE, tf.float32) - d_fake_red),
-                       axis=1))
+    loss_d_red = tf.reduce_mean(d_fake_red) + tf.reduce_mean(1-d_real_red)
     loss_D = loss_d_red
 
     loss_gen = -tf.reduce_mean(d_fake_red)
@@ -42,15 +43,7 @@ def main():
 
     Loss_s_re = tf.reduce_mean(tf.abs(decoder_i - Y))
     Loss_hat = tf.reduce_mean(tf.abs(decoder_c - Y))
-
-    A = tf.image.rgb_to_yuv((input_red_image+1)/2.0)
-    A_Y = tf.to_int32(A[:, :, :, 0:1]*255.0)
-
-    B = tf.image.rgb_to_yuv((Y+1)/2.0)
-    B_Y = tf.to_int32(B[:, :, :, 0:1]*255.0)
-
-    ssim = tf.reduce_mean(tf.image.ssim(A_Y, B_Y, 255.0))
-    alpha = IT/EPOCHS
+    alpha = IT/(EPOCHS*BATCH_MAX)
     loss_G = 0.1*loss_Gan + 10*Loss_s_re + 5*(1-alpha) * Loss_hat
 
     # 最適化
@@ -75,7 +68,39 @@ def main():
     sess.run(init)
     saver = tf.train.Saver()
 
-    for i in range(EPOCHS):
+    gen = DataGenerator(WIDTH, HEIGHT, BATCH_SIZE)
+    valid_image, valid_masks, valid_image_m = gen.get_data()
+
+    with open(SAVE_DIR+"log.csv", 'w') as f:
+        f.write("epoch,d_loss,g_loss,recon_loss")
+    for e in range(EPOCHS):
+        e_loss1, e_loss2, e_loss3 = 0, 0, 0
+        for b in range(BATCH_MAX):
+            image, masks, image_m = gen.get_data()
+            if image.shape[0] != BATCH_SIZE:
+                continue
+            _, loss1 = sess.run([optimize_D, loss_D], feed_dict={
+                                X: image_m, Y: image, mask: masks})
+            _, loss2, loss3 = sess.run([optimize_G, loss_G, Loss_s_re],
+                                       feed_dict={
+                                       X: image_m, Y: image, mask: masks, IT: b+1})
+            e_loss1 += loss1 / BATCH_MAX
+            e_loss2 += loss2 / BATCH_MAX
+            e_loss3 += loss3 / BATCH_MAX
+        print('Epoch : %d\tD Loss = %.5f\tG Loss = %.5f\tRecon Loss = %.5f' % (
+            e, e_loss1, e_loss2, e_loss3))
+        log_msg = "\n{},{},{},{}".format(e, e_loss1, e_loss2, e_loss3)
+        with open(SAVE_DIR+"log.csv", 'a') as f:
+            f.write(log_msg)
+        if e % SAVE_COUNTER == 0:
+            s_m_path = SAVE_DIR + "model".format(e)
+            saver.save(sess, s_m_path)
+            img_sample = sess.run([input_red_image], feed_dict={
+                X: valid_image_m, Y: valid_image, mask: valid_masks})
+            for k in range(3):
+                save_img = img_sample[0][k][:][:][:]
+                s_path = SAVE_DIR + "{:05}_{}.png".format(e, k)
+                cv2.imwrite(s_path, save_img)
 
 
 if __name__ == "__main__":

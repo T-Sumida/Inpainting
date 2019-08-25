@@ -1,9 +1,5 @@
 # coding:utf-8
 
-import os
-import scipy.io
-import urllib.request
-import urllib.parse
 import numpy as np
 import random as rr
 import math as mt
@@ -11,11 +7,10 @@ from keras.preprocessing.image import ImageDataGenerator
 
 
 class DataGenerator():
-    def __init__(self, mat_path, width, height, batch_size, load_image_num):
+    def __init__(self, width, height, batch_size):
         self.width = width
         self.height = height
-        image_num = batch_size
-        self.load_image(mat_path, load_image_num)
+        self.batch_size = batch_size
 
         train_datagen = ImageDataGenerator(
             rescale=1./255,
@@ -27,31 +22,6 @@ class DataGenerator():
             target_size=(self.width, self.height),
             batch_size=batch_size,
             class_mode='input')
-
-    def load_image(self, mat_path, load_image_num):
-        save_path = "./data/0"
-        if not os.path.exists(save_path):
-            os.mkdir(save_path)
-
-        mat_data = scipy.io.loadmat(mat_path)
-        sun_urls = mat_data['SUN']
-        cntr = 0
-        for urls in sun_urls:
-            for u in urls:
-                try:
-                    img_data = urllib.request.urlopen(u[2][0][0][0]).read()
-                    file_name = "{:010}.jpg".format(cntr)
-                    f = open(os.path.join(
-                        save_path, file_name), 'wb')
-
-                    f.write(img_data)
-                    f.close()
-                    cntr += 1
-                    if cntr == load_image_num:
-                        return
-
-                except Exception as e:
-                    print(e)
 
     def get_data(self):
         image, _ = next(self.train_generator)
@@ -129,7 +99,3 @@ class DataGenerator():
                 startY = endY
 
         return mask
-
-
-t = DataGenerator("./url.mat", 140, 140, 12, 20000)
-# t.get_data()

@@ -1,6 +1,43 @@
 # coding:utf-8
 import tensorflow as tf
 import numpy as np
+import os
+import scipy.io
+import urllib.request
+import urllib.parse
+
+
+def load_image(self, mat_path, load_image_num, save_path="./data"):
+    if not os.path.exists(save_path):
+        os.mkdir(save_path)
+
+    mat_data = scipy.io.loadmat(mat_path)
+    sun_urls = mat_data['SUN']
+    cntr = 0
+
+    divide = load_image_num // 900
+    kind_counter = 0
+    for urls in sun_urls:
+        for u in urls:
+            print(kind_counter)
+            kind_counter += 1
+            cntr = 0
+            for p in u[2][0]:
+                try:
+                    img_data = urllib.request.urlopen(p[0]).read()
+                    file_name = "{:05}_{:010}.jpg".format(
+                        kind_counter, cntr)
+                    f = open(os.path.join(
+                        save_path, file_name), 'wb')
+
+                    f.write(img_data)
+                    f.close()
+                    cntr += 1
+                    if cntr == divide:
+                        break
+
+                except Exception as e:
+                    print(e)
 
 
 def double_conv(input_l, filter_sizes, strides, kernel_sizes):
