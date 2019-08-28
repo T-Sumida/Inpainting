@@ -4,7 +4,7 @@ import tensorflow as tf
 from inpaint_ops import double_conv, convSN2d, reduce_std, softmax
 
 
-def encoder(input_l, name, bn=True):
+def encoder(input_l, name, bn=False):
     with tf.variable_scope(name):
         X = tf.layers.conv2d(inputs=input_l, filters=32,
                              kernel_size=[5, 5], strides=(1, 1), padding='SAME')
@@ -92,7 +92,7 @@ def decoder(input_l, name, width, height, reuse=False):
 
         X = tf.layers.conv2d(X, 3, [3, 3],
                              strides=(1, 1), padding='SAME')
-        X = tf.nn.sigmoid(X)
+        X = tf.clip_by_value(X, -1, 1)
         return X
 
 
@@ -126,7 +126,7 @@ def discriminator(input_l, name, bn=True, reuse=False):
             X = tf.layers.BatchNormalization()(X)
 
         X = tf.layers.flatten(X)
-        X = tf.layers.dense(X, 1, activation='sigmoid')
+        X = tf.layers.dense(X, 1)
         return X
 
 
