@@ -92,7 +92,7 @@ def decoder(input_l, name, width, height, reuse=False):
 
         X = tf.layers.conv2d(X, 3, [3, 3],
                              strides=(1, 1), padding='SAME')
-        X = tf.clip_by_value(X, -1, 1)
+        X = tf.nn.sigmoid(X)
         return X
 
 
